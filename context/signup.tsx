@@ -19,19 +19,18 @@ const initialSignupPayload: SignupPayload = {
   username: "",
   email: "",
   providerToken: "",
+  userId:""
 };
 
 const SignupFlow: Record<SignupMethod, SignupStep[]> = {
   [SignupMethod.Google]: [
     SignupStep.Signup,
     SignupStep.UserName,
-    SignupStep.Profile,
   ],
   [SignupMethod.Email]: [
     SignupStep.Signup,
     SignupStep.OTP,
     SignupStep.UserName,
-    SignupStep.Profile,
   ],
 };
 

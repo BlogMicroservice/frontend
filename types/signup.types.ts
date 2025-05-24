@@ -11,6 +11,7 @@ export type SignupPayload = {
   verified: boolean;
   username: string;
   providerToken?: string;
+  userId?:string
 };
 
 
@@ -26,6 +27,11 @@ export enum SignupStep {
   Signup = "Signup",
   OTP = "OTP",
   UserName = "UserName",
-  Profile = "Profile",
+}
+export type GoogleSignupInfo ={
+  username?: string;
+  email: string;
+  providerId:string;
+  profileImage?:string
 }
 
