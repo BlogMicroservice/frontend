@@ -4,7 +4,6 @@ import React from "react";
 import SignUpPage from "./SignUpPage";
 import EmailVerification from "./EmailVerification";
 import UserName from "./UserName";
-import Profile from "./Profile";
 
 
 
@@ -28,10 +27,6 @@ export default function MainSignUp() {
   if (context.currentStepLabel === SignupStep.UserName) {
     return <Wrapper><UserName/></Wrapper>;
   }
-  if (context.currentStepLabel === SignupStep.Profile) {
-    return <Wrapper><Profile/></Wrapper>;
-  }
-
   // Optionally, add other conditions or return null
   return null;
 }
