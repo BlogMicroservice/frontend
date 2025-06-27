@@ -1,0 +1,51 @@
+"use client";
+
+import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { LuArrowRight } from "react-icons/lu";
+
+export default function CreatePage() {
+  const [title, setTitle] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const handleNext = async () => {
+    if (!title.trim()) return;
+    setLoading(true);
+    try {
+      await axios.post("/api/page", { title });
+      router.push("/editor");
+    } catch (error) {
+      console.error("API error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-white p-5 rounded-xl shadow-md space-y-4">
+        <h1 className="text-lg font-medium text-gray-800">Enter the title</h1>
+
+        <input
+          type="text"
+          placeholder="Enter title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
+        />
+
+        <button
+          onClick={handleNext}
+          disabled={loading || !title.trim()}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white rounded"
+          style={{ backgroundColor: "#000", color: "#fff", border: "none" }}
+        >
+          {loading ? "Submitting..." : "Next"}
+          <LuArrowRight className="text-sm" />
+        </button>
+      </div>
+    </main>
+  );
+}
