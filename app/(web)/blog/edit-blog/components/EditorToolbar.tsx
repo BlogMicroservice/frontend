@@ -35,6 +35,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { URL_BASE_PRIVATE } from "@/constants";
+import axios from "axios";
 
 const FONTS = [
   { label: "Sans", value: "sans-serif" },
@@ -55,22 +57,16 @@ interface Props {
   editor: TiptapEditor | null;
   currentColor: string;
   setCurrentColor: (color: string) => void;
+  postId: string;
 }
 
 export default function EditorToolbar({
   editor,
   currentColor,
   setCurrentColor,
+  postId,
 }: Props) {
   const [, setRefresh] = useState(0);
-
-  const handleSave = () => {
-    const html = editor?.getHTML();
-    if (html) {
-      localStorage.setItem("editor-content", html);
-      alert("Content saved!");
-    }
-  };
 
   useEffect(() => {
     if (!editor) return;
@@ -129,46 +125,51 @@ export default function EditorToolbar({
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editor) return;
 
-    // For now, create a temporary URL
-    const tempUrl = URL.createObjectURL(file);
 
-    // Insert image in editor
-    // editor.chain().focus().setImage({ src: tempUrl }).run();
-    editor
-      .chain()
-      .focus()
-      .setImage({
-        src: tempUrl,
-        width: "100%",
-        height: "auto",
-      })
-      .run();
+    try {
+      const uploadedUrl = await uploadImageToBackend(file);
+      if (uploadedUrl) {
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: uploadedUrl, width: "100%", height: "auto" })
+          .run();
+        editor.chain().focus().setImage({ src: uploadedUrl }).run();
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+    }
 
-    // Optional: Call actual upload function (commented out for now)
-    // uploadImageToBackend(file);
-
-    // Reset input
     e.target.value = "";
   };
 
-  // const uploadImageToBackend = async (file: File) => {
-  //   // You can later replace this with a real fetch/axios call
-  //   console.log("Ready to upload:", file);
+  const uploadImageToBackend = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("postId", postId);
 
-  //   // Example:
-  //   // const formData = new FormData();
-  //   // formData.append('image', file);
-  //   // const res = await fetch('/your-api/upload', {
-  //   //   method: 'POST',
-  //   //   body: formData,
-  //   // });
-  //   // const data = await res.json();
-  //   // return data.url;
-  // };
+    try {
+      const res = await axios.post(
+        `${URL_BASE_PRIVATE}/content/blog/upload-image`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          withCredentials: true, // If your backend needs cookies (optional)
+        }
+      );
+      console.log(res);
+      return res.data.imageUrl;
+    } catch (error) {
+      console.error("Upload failed:", error);
+      return null;
+    }
+  };
 
   return (
     <div className="w-full flex justify-center sticky top-0 z-10 bg-white mt-10">
@@ -248,7 +249,6 @@ export default function EditorToolbar({
         >
           <LuCode className="w-4 h-4" />
         </button>
-        
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -379,8 +379,6 @@ export default function EditorToolbar({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-
-        <Button onClick={handleSave}>Save</Button>
       </div>
     </div>
   );

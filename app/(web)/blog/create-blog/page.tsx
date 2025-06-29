@@ -1,21 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { LuArrowRight } from "react-icons/lu";
+import { URL_BASE_PRIVATE } from "@/constants";
+import { useAuth } from "@/hook/useAuth";
 
 export default function CreatePage() {
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const auth = useAuth();
 
+  useEffect(() => {
+    if (auth === false) {
+      router.push("/login");
+    }
+  }, [auth, router]);
+  if (loading || auth === false) return <p>Loading profile...</p>;
   const handleNext = async () => {
     if (!title.trim()) return;
+
     setLoading(true);
     try {
-      await axios.post("/api/page", { title });
-      router.push("/editor");
+      const res = await axios.post(
+        `${URL_BASE_PRIVATE}/content/blog/createBlog`,
+        { title },
+        {
+          withCredentials: true,
+          validateStatus: (status) => status < 500,
+        }
+      );
+
+      if (res.data?.status && res.data?.post?.id) {
+        const postId = res.data.post.id;
+        router.push(`/blog/edit-blog/${postId}`);
+      } else {
+        console.error("Failed to create post:", res.data);
+      }
     } catch (error) {
       console.error("API error:", error);
     } finally {

@@ -47,7 +47,7 @@ const router = useRouter();
               profileImage: res.data.profileImage,
             })
           );
-          router.push("/blog/create-blog")
+          router.push("/")
         }
       } catch (error: unknown) {
         let message = "Login failed due to server error";
@@ -93,7 +93,7 @@ const router = useRouter();
             profileImage: res.data.data.profileImage,
           })
         );
-        router.push("/blog/create-blog")
+        router.push("/")
       }
     } catch (error: unknown) {
       let message = "Login failed due to server error";

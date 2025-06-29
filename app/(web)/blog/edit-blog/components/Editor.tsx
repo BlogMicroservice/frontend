@@ -15,6 +15,12 @@ import { SuggestionProps } from "@tiptap/suggestion";
 import { Editor as CoreEditor, Range } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import TextAlign from "@tiptap/extension-text-align";
+import { URL_BASE_PRIVATE } from "@/constants";
+import axios from "axios";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hook/useAuth";
+import { useRouter } from "next/navigation";
 interface SlashItem {
   title: string;
   description: string;
@@ -57,7 +63,40 @@ const CustomImage = Image.extend({
     };
   },
 });
-export default function Editor() {
+export default function Editor({ id }: { id: string }) {
+  const [post, setPost] = useState(null);
+  const auth = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (auth === false) {
+      router.push("/login");
+    }
+  }, [auth, router]);
+  useEffect(() => {
+    if (!id) return;
+
+    axios
+      .get(`${URL_BASE_PRIVATE}/content/blog/getEditBlog/${id}`, {
+        withCredentials: true,
+      })
+      .then((res) => {
+        if (res.data?.status) {
+          console.log(res.data.post);
+          setPost(res.data.post);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch post:", err);
+      });
+  }, [id]);
+
+  const [content, setContent] = useState(post?.content ?? ""); // use '' instead of undefined
+  useEffect(() => {
+    if (post?.content) {
+      setContent(post.content);
+    }
+  }, [post?.content]);
   const [currentColor, setCurrentColor] = useState("#000000");
   const [isLoading, setIsLoading] = useState(false);
   const [showPromptInput, setShowPromptInput] = useState(false);
@@ -65,39 +104,31 @@ export default function Editor() {
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const [currentRange, setCurrentRange] = useState<any>(null);
 
-  const generateDummyContent = (prompt: string) => {
-    const responses = [
-      `Here's content about "${prompt}": Lorem ipsum dolor sit amet.`,
-      `Regarding "${prompt}": Sample generated text.`,
-      `About "${prompt}": This is important for modern solutions.`,
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
-
   const handleGenerateClick = (range: any) => {
     setCurrentRange(range);
     setShowPromptInput(true);
   };
 
-  const handlePromptSubmit = () => {
+  const handlePromptSubmit = async () => {
     if (!currentPrompt.trim() || !editor || !currentRange) return;
 
     setIsLoading(true);
     setShowPromptInput(false);
 
-    editor
-      .chain()
-      .focus()
-      .deleteRange(currentRange)
-      .insertContent(`<p>Generating content about "${currentPrompt}"...</p>`)
-      .run();
-
-    setTimeout(() => {
-      const content = generateDummyContent(currentPrompt);
-      editor.chain().focus().insertContent(`<p>${content}</p>`).run();
-      setIsLoading(false);
-      setCurrentPrompt("");
-    }, 1000);
+    const res = await axios.post(
+      `${URL_BASE_PRIVATE}/content/AI/generateTextFromPrompt`,
+      { prompt: currentPrompt },
+      {
+        validateStatus: (status) => status < 500,
+        withCredentials: true,
+      }
+    );
+    console.log("Saved:", res.data);
+    if (res.status) {
+      editor.chain().focus().insertContent(res.data.aiContent).run();
+    }
+    setIsLoading(false);
+    setCurrentPrompt("");
   };
 
   const editor = useEditor({
@@ -262,23 +293,87 @@ export default function Editor() {
         },
       }),
     ],
-    content: "<p>Hello, start typing...</p>",
+    content: "<h1>Write Something</h1>",
   });
 
+  useEffect(() => {
+    if (editor && post?.content) {
+      editor.commands.setContent(post.content);
+    }
+  }, [editor, post?.content]);
   useEffect(() => {
     if (showPromptInput && promptInputRef.current) {
       promptInputRef.current.focus();
     }
   }, [showPromptInput]);
 
+  useEffect(() => {
+    if (post?.title) {
+      setTitle(post.title);
+    }
+  }, [post?.title]);
+
+  const [title, setTitle] = useState(post?.title ?? "");
+
+  const handleSave = async () => {
+    const content = editor?.getHTML();
+    if (!title.trim() || !content?.trim()) {
+      console.warn("Title or content is empty");
+      return;
+    }
+
+    try {
+      const res = await axios.put(
+        `${URL_BASE_PRIVATE}/content/blog/editBlog/${id}`,
+        { title, content },
+        {
+          withCredentials: true,
+        }
+      );
+      console.log("Saved:", res.data);
+      if (res.status) setPost(res.data.post);
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+  };
+  const goToPublish = () => {
+    router.push(`/blog/publish-blog/${id}`);
+  };
+
   if (!editor) return null;
 
   return (
     <div className="w-full flex flex-col items-center mt-10 relative">
+      <div className="relative w-[calc(100vw-200px)] flex justify-end gap-4">
+        <Button
+          className="bg-black text-white hover:bg-neutral-800 cursor-pointer"
+          onClick={handleSave}
+        >
+          Save
+        </Button>
+        <Button
+          className="bg-black text-white hover:bg-neutral-800 cursor-pointer"
+          onClick={goToPublish}
+        >
+          Publish
+        </Button>
+      </div>
+
+      <div className="relative w-[calc(100vw-200px)]">
+        <textarea
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter blog title"
+          rows={2}
+          className="w-full resize-none text-5xl font-semibold bg-transparent outline-none border-none focus:ring-0 focus:ring-offset-0 leading-tight"
+        />
+      </div>
+
       <EditorToolbar
         editor={editor}
         currentColor={currentColor}
         setCurrentColor={setCurrentColor}
+        postId={id}
         // isLoading={isLoading}
       />
 
